@@ -24,7 +24,7 @@ jobs:
         with:
           channel: stable
 
-      # צור פרויקט Flutter זמני, וקח ממנו רק את android/
+      # ייצור android/ בסביבה זמנית והעתקה לפרויקט (לא נוגעים ב-lib/)
       - name: Create android/ in temp & copy back (safe)
         shell: bash
         run: |
@@ -42,3 +42,36 @@ jobs:
           fi
           ls -la android || true
 
+      # הסרת dot‑shorthands מקובץ main.dart אם נשארו בטעות
+      - name: Patch main.dart (remove dot-shorthands)
+        if: ${{ hashFiles('lib/main.dart') != '' }}
+        shell: bash
+        run: |
+          set -e
+          sed -i -E 's/(colorScheme:[[:space:]]*)\.(fromSeed)/\1ColorScheme.\2/g' lib/main.dart || true
+          sed -i -E 's/(mainAxisAlignment:[[:space:]]*)\.([A-Za-z_]+)/\1MainAxisAlignment.\2/g' lib/main.dart || true
+          sed -i -E 's/(crossAxisAlignment:[[:space:]]*)\.([A-Za-z_]+)/\1CrossAxisAlignment.\2/g' lib/main.dart || true
+          sed -i -E 's/(alignment:[[:space:]]*)\.([A-Za-z_]+)/\1Alignment.\2/g' lib/main.dart || true
+
+      # יישור תלות intl כדי למנוע התנגשות עם flutter_localizations
+      - name: Align intl version (auto-fix)
+        shell: bash
+        run: |
+          set -e
+          if grep -qE '^[[:space:]]*intl:[[:space:]]*\^?0\.19' pubspec.yaml; then
+            flutter pub add intl:^0.20.2
+          fi
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      # ⬇️ כאן התיקון שביקשת: מעלים את כל התיקייה flutter-apk כדי שתמיד יופיע app-debug.apk ב‑Artifact
+      - name: Upload APK artifact (entire flutter-apk folder)
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodiFit-debug-apk
+          path: build/app/outputs/flutter-apk/
+          if-no-files-found: error
