@@ -1,4 +1,42 @@
+import 'package:flutter/material.dart';
 
-// כך (רגיל, מומלץ):
-colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-mainAxisAlignment: MainAxisAlignment.center,
+void main() {
+  runApp(const FoodiFitApp());
+}
+
+class FoodiFitApp extends StatelessWidget {
+  const FoodiFitApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'FoodiFit',
+      theme: ThemeData(
+        useMaterial3: true,
+        // בלי dot‑shorthands:
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('FoodiFit')),
+      body: Center(
+        child: Column(
+          // בלי dot‑shorthands:
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Text('ברוך הבא ל‑FoodiFit'),
+          ],
+        ),
+      ),
+    );
+  }
+}
