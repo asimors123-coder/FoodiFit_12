@@ -24,62 +24,21 @@ jobs:
         with:
           channel: stable
 
-      # יצירת android/ רק אם חסרה + טיפול חכם במקרה בו lib הוא קובץ ולא תיקייה
-      - name: Create Android folder if missing (robust)
+      # צור פרויקט Flutter זמני, וקח ממנו רק את android/
+      - name: Create android/ in temp & copy back (safe)
         shell: bash
         run: |
           set -e
-
-          echo "== Before =="
-          ls -la || true
-
-          # גיבוי lib ו-pubspec.yaml אם קיימים
-          if [ -d lib ]; then
-            echo "lib is a directory -> backing up and removing to avoid conflicts"
-            rm -rf lib_bak || true
-            mv lib lib_bak
-          elif [ -f lib ]; then
-            echo "lib is a FILE -> backing it up and removing"
-            rm -rf lib_file_bak || true
-            mv lib lib_file_bak
-          fi
-
-          if [ -f pubspec.yaml ]; then
-            cp -f pubspec.yaml pubspec_bak
-          fi
-
-          # צור שלד אנדרואיד רק אם חסר
           if [ ! -d android ]; then
-            echo "android/ missing -> running flutter create (android only)"
-            flutter create . --platforms=android
+            echo "android/ missing -> creating in temp"
+            TMPDIR="$(mktemp -d)"
+            pushd "$TMPDIR"
+            flutter create temp_app --platforms=android
+            popd
+            mv "$TMPDIR/temp_app/android" ./android
+            rm -rf "$TMPDIR"
           else
-            echo "android/ already exists -> skipping flutter create"
+            echo "android/ already exists -> skipping"
           fi
+          ls -la android || true
 
-          # שחזור קוד המקור אם היה lib/ מקורי
-          if [ -d lib_bak ]; then
-            echo "Restoring original lib/ over generated one"
-            rm -rf lib
-            mv lib_bak lib
-          fi
-
-          # אם היה בטעות קובץ בשם lib, לא משחזרים. נשאיר את lib/ שנוצרה.
-          # שחזור pubspec.yaml אם נשמר
-          if [ -f pubspec_bak ]; then
-            mv -f pubspec_bak pubspec.yaml
-          fi
-
-          echo "== After =="
-          ls -la || true
-
-      - name: Flutter pub get
-        run: flutter pub get
-
-      - name: Build debug APK
-        run: flutter build apk --debug
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: FoodiFit-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
