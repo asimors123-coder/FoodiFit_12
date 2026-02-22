@@ -1,0 +1,4 @@
+
+// כך (רגיל, מומלץ):
+colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+mainAxisAlignment: MainAxisAlignment.center,
