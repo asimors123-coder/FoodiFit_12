@@ -1,10 +1,7 @@
-
 name: Build Android APK (Debug)
 
 on:
-  # ניתן להריץ ידנית מהטאב Actions
   workflow_dispatch:
-  # או אוטומטית על כל push לענפי main/master
   push:
     branches: [ main, master ]
 
@@ -27,22 +24,53 @@ jobs:
         with:
           channel: stable
 
-      # יוצר/מרענן את פרויקט האנדרואיד אם חסר, ושומר את הקוד שלך
-      - name: Ensure Android project exists (create if missing)
+      # יצירת android/ רק אם חסרה + טיפול חכם במקרה בו lib הוא קובץ ולא תיקייה
+      - name: Create Android folder if missing (robust)
         shell: bash
         run: |
           set -e
 
-          echo "Backing up lib/ and pubspec.yaml if present..."
-          if [ -d lib ]; then cp -r lib lib_bak; fi
-          if [ -f pubspec.yaml ]; then cp pubspec.yaml pubspec_bak; fi
+          echo "== Before =="
+          ls -la || true
 
-          echo "Creating Android skeleton (safe to overwrite)..."
-          flutter create . --platforms=android --overwrite
+          # גיבוי lib ו-pubspec.yaml אם קיימים
+          if [ -d lib ]; then
+            echo "lib is a directory -> backing up and removing to avoid conflicts"
+            rm -rf lib_bak || true
+            mv lib lib_bak
+          elif [ -f lib ]; then
+            echo "lib is a FILE -> backing it up and removing"
+            rm -rf lib_file_bak || true
+            mv lib lib_file_bak
+          fi
 
-          echo "Restoring your sources..."
-          if [ -d lib_bak ]; then rm -rf lib && mv lib_bak lib; fi
-          if [ -f pubspec_bak ]; then mv -f pubspec_bak pubspec.yaml; fi
+          if [ -f pubspec.yaml ]; then
+            cp -f pubspec.yaml pubspec_bak
+          fi
+
+          # צור שלד אנדרואיד רק אם חסר
+          if [ ! -d android ]; then
+            echo "android/ missing -> running flutter create (android only)"
+            flutter create . --platforms=android
+          else
+            echo "android/ already exists -> skipping flutter create"
+          fi
+
+          # שחזור קוד המקור אם היה lib/ מקורי
+          if [ -d lib_bak ]; then
+            echo "Restoring original lib/ over generated one"
+            rm -rf lib
+            mv lib_bak lib
+          fi
+
+          # אם היה בטעות קובץ בשם lib, לא משחזרים. נשאיר את lib/ שנוצרה.
+          # שחזור pubspec.yaml אם נשמר
+          if [ -f pubspec_bak ]; then
+            mv -f pubspec_bak pubspec.yaml
+          fi
+
+          echo "== After =="
+          ls -la || true
 
       - name: Flutter pub get
         run: flutter pub get
