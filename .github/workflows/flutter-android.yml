@@ -1,0 +1,57 @@
+
+name: Build Android APK (Debug)
+
+on:
+  # ניתן להריץ ידנית מהטאב Actions
+  workflow_dispatch:
+  # או אוטומטית על כל push לענפי main/master
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      # יוצר/מרענן את פרויקט האנדרואיד אם חסר, ושומר את הקוד שלך
+      - name: Ensure Android project exists (create if missing)
+        shell: bash
+        run: |
+          set -e
+
+          echo "Backing up lib/ and pubspec.yaml if present..."
+          if [ -d lib ]; then cp -r lib lib_bak; fi
+          if [ -f pubspec.yaml ]; then cp pubspec.yaml pubspec_bak; fi
+
+          echo "Creating Android skeleton (safe to overwrite)..."
+          flutter create . --platforms=android --overwrite
+
+          echo "Restoring your sources..."
+          if [ -d lib_bak ]; then rm -rf lib && mv lib_bak lib; fi
+          if [ -f pubspec_bak ]; then mv -f pubspec_bak pubspec.yaml; fi
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FoodiFit-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
